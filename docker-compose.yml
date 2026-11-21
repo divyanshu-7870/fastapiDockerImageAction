@@ -1,0 +1,20 @@
+version: "3.8"
+
+services:
+  notes-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: notes-fastapi-app:latest
+    container_name: notes_fastapi_service
+    ports:
+      - "8000:8000"
+    environment:
+      - PYTHONUNBUFFERED=1
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
