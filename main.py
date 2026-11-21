@@ -1,66 +1,34 @@
 import logging
 import time
-from datetime import datetime, timezone
-from typing import List, Optional
-from fastapi import FastAPI, HTTPException, Request, status
-from pydantic import BaseModel, Field
+from fastapi import FastAPI, HTTPException, Request
+from pydantic import BaseModel
 
-# ---------------------------------------------------------
-# Logging Configuration
-# ---------------------------------------------------------
+# --------------------------------------------------
+# Structured Logging Setup (as per lecture unit 4)
+# --------------------------------------------------
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    format="%(asctime)s %(levelname)s %(message)s",
 )
 logger = logging.getLogger("notes-api")
 
-app = FastAPI(
-    title="Notes Management API",
-    description="Backend API with CRUD, structured logging, health checks, and CI/CD readiness.",
-    version="1.0.0",
-)
+app = FastAPI(title="Notes API")
 
-# ---------------------------------------------------------
-# Data Models
-# ---------------------------------------------------------
-class NoteCreate(BaseModel):
-    title: str = Field(..., min_length=1, max_length=120)
-    content: str = Field(..., min_length=1)
-    tags: Optional[List[str]] = Field(default_factory=list)
+# Simple in-memory list of notes
+notes = [
+    {"id": 1, "title": "First Note", "content": "Welcome to my Notes API"},
+    {"id": 2, "title": "College Task", "content": "Complete Backend Unit 4 PBL"},
+]
 
 
-class NoteUpdate(BaseModel):
-    title: Optional[str] = Field(None, min_length=1, max_length=120)
-    content: Optional[str] = Field(None, min_length=1)
-    tags: Optional[List[str]] = None
-
-
-class NoteResponse(BaseModel):
-    id: int
+class Note(BaseModel):
     title: str
     content: str
-    tags: List[str]
-    created_at: str
-    updated_at: str
 
 
-# ---------------------------------------------------------
-# In-Memory Database & State
-# ---------------------------------------------------------
-notes_db: dict[int, dict] = {}
-id_counter = 1
-
-
-def reset_db_for_testing():
-    """Helper to reset database state during testing."""
-    global notes_db, id_counter
-    notes_db = {}
-    id_counter = 1
-
-
-# ---------------------------------------------------------
-# Structured Request Logging Middleware
-# ---------------------------------------------------------
+# --------------------------------------------------
+# Monitoring Middleware: Logs method, path, status, duration
+# --------------------------------------------------
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
@@ -86,84 +54,49 @@ async def log_requests(request: Request, call_next):
         raise
 
 
-# ---------------------------------------------------------
-# Core Endpoints
-# ---------------------------------------------------------
-@app.get("/", tags=["Info"])
+# --------------------------------------------------
+# Endpoints
+# --------------------------------------------------
+@app.get("/")
 def root():
     return {
-        "application": "Notes Management API",
+        "application": "Notes API",
         "framework": "FastAPI",
         "status": "running",
-        "version": "1.0.0",
         "sapid": "YOUR_SAP_ID",
     }
 
 
-@app.get("/health", tags=["Monitoring"])
+@app.get("/health")
 def health():
     return {"status": "healthy"}
 
 
-@app.post("/notes", response_model=NoteResponse, status_code=status.HTTP_201_CREATED, tags=["Notes"])
-def create_note(payload: NoteCreate):
-    global id_counter
-    now = datetime.now(timezone.utc).isoformat()
-    note = {
-        "id": id_counter,
-        "title": payload.title,
-        "content": payload.content,
-        "tags": payload.tags or [],
-        "created_at": now,
-        "updated_at": now,
-    }
-    notes_db[id_counter] = note
-    id_counter += 1
-    return note
+@app.get("/notes")
+def get_all_notes():
+    return notes
 
 
-@app.get("/notes", response_model=List[NoteResponse], tags=["Notes"])
-def list_notes(tag: Optional[str] = None):
-    all_notes = list(notes_db.values())
-    if tag:
-        return [note for note in all_notes if tag.lower() in [t.lower() for t in note["tags"]]]
-    return all_notes
-
-
-@app.get("/notes/{note_id}", response_model=NoteResponse, tags=["Notes"])
+@app.get("/notes/{note_id}")
 def get_note(note_id: int):
-    if note_id not in notes_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Note with ID {note_id} not found",
-        )
-    return notes_db[note_id]
+    for note in notes:
+        if note["id"] == note_id:
+            return note
+    raise HTTPException(status_code=404, detail="Note not found")
 
 
-@app.put("/notes/{note_id}", response_model=NoteResponse, tags=["Notes"])
-def update_note(note_id: int, payload: NoteUpdate):
-    if note_id not in notes_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Note with ID {note_id} not found",
-        )
-    note = notes_db[note_id]
-    if payload.title is not None:
-        note["title"] = payload.title
-    if payload.content is not None:
-        note["content"] = payload.content
-    if payload.tags is not None:
-        note["tags"] = payload.tags
-    note["updated_at"] = datetime.now(timezone.utc).isoformat()
-    return note
+@app.post("/notes")
+def create_note(note: Note):
+    new_id = len(notes) + 1 if notes else 1
+    new_note = {"id": new_id, "title": note.title, "content": note.content}
+    notes.append(new_note)
+    return new_note
 
 
-@app.delete("/notes/{note_id}", status_code=status.HTTP_200_OK, tags=["Notes"])
+@app.delete("/notes/{note_id}")
 def delete_note(note_id: int):
-    if note_id not in notes_db:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Note with ID {note_id} not found",
-        )
-    deleted = notes_db.pop(note_id)
-    return {"message": "Note deleted successfully", "deleted_note_id": deleted["id"]}
+    for i, note in enumerate(notes):
+        if note["id"] == note_id:
+            deleted = notes.pop(i)
+            return {"message": "Note deleted", "note": deleted}
+    raise HTTPException(status_code=404, detail="Note not found")
