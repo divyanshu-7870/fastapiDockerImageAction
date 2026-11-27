@@ -1,115 +1,74 @@
-# FastAPI Notes App - Docker & GitHub Actions (Unit 4 PBL)
+# Notes API - Backend Development (Unit 4)
 
-This project follows the video tutorial: [https://youtu.be/vCpj3W-yHes](https://youtu.be/vCpj3W-yHes) and the [upessocs/fastapiDockerImageAction](https://github.com/upessocs/fastapiDockerImageAction) demonstration repository.
+A simple Notes application built with FastAPI, containerized with Docker, and automated using GitHub Actions CI/CD.
 
----
+## Project Structure
 
-## 📁 Project Structure
-
-```bash
-.
-├── .github/
-│   └── workflows/
-│       └── fastapibuild.yml     # GitHub Actions workflow from video
+```
+├── .github/workflows/
+│   └── fastapibuild.yml     # GitHub Actions workflow
 ├── src/
-│   └── main.py                  # FastAPI app with Notes routes, health check & logging
-├── automationTesting.py         # Route automated tests required for PBL
-├── docker-compose.yml           # Run service with Docker Compose
-├── Dockerfile                   # Docker configuration from video tutorial
-├── requirements.txt             # Dependencies
+│   └── main.py              # FastAPI application
+├── automationTesting.py     # Automated route testing
+├── docker-compose.yml       # Docker compose setup
+├── Dockerfile               # Docker configuration
+├── requirements.txt         # Project dependencies
 └── README.md
 ```
 
----
+## Running Locally
 
-## 1. Run Locally
+1. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-Install requirements:
-```bash
-pip install -r requirements.txt
-```
+2. Run the server:
+   ```bash
+   python src/main.py
+   ```
+   The app will start on `http://127.0.0.1:8000`.
 
-Run the application:
-```bash
-python src/main.py
-```
-App runs on `http://127.0.0.1:8000`.
+   - API docs: `http://127.0.0.1:8000/docs`
+   - Health check: `http://127.0.0.1:8000/health`
+   - Notes list: `http://127.0.0.1:8000/notes`
 
-- Health check: `http://127.0.0.1:8000/health`
-- Notes: `http://127.0.0.1:8000/notes`
-- Swagger Docs: `http://127.0.0.1:8000/docs`
+3. Run automated tests:
+   ```bash
+   python automationTesting.py
+   ```
 
----
+## Running with Docker
 
-## 2. Run Automated Tests (PBL Requirement)
+### Manual Build and Run:
 
-```bash
-python automationTesting.py
-```
+1. Build the image:
+   ```bash
+   docker build -t notes-app .
+   ```
 
----
+2. Run the container:
+   ```bash
+   docker run -p 8000:8000 notes-app
+   ```
 
-## 3. Manual Docker Build & Push (Following Tutorial Video)
+### Using Docker Compose:
 
-### Step 1: Build Local Image
-```bash
-docker build -t localfastapiapp .
-```
-
-### Step 2: Tag Image for Docker Hub
-Replace `YOUR_DOCKERHUB_USERNAME` with your actual Docker Hub username:
-```bash
-docker tag localfastapiapp YOUR_DOCKERHUB_USERNAME/notes-app:v0.1
-```
-
-### Step 3: Login to Docker Hub
-1. Generate an Access Token from Docker Hub (**Account Settings → Security → Personal Access Tokens**).
-2. Login securely via CLI:
-```bash
-echo "<YOUR_DOCKER_TOKEN>" | docker login -u "YOUR_DOCKERHUB_USERNAME" --password-stdin
-```
-
-### Step 4: Push to Docker Hub
-```bash
-docker push YOUR_DOCKERHUB_USERNAME/notes-app:v0.1
-```
-
-### Step 5: Run the Docker Image
-```bash
-docker run -p 8001:8000 YOUR_DOCKERHUB_USERNAME/notes-app:v0.1
-```
-Now verify `http://127.0.0.1:8001/` and `http://127.0.0.1:8001/health` in your browser.
-
----
-
-## 4. Run with Docker Compose
-
+Start the service:
 ```bash
 docker compose up -d
 ```
-Access at `http://localhost:8000/health`. To stop:
+
+Stop the service:
 ```bash
 docker compose down
 ```
 
----
+## GitHub Actions CI/CD
 
-## 5. Automated CI/CD with GitHub Actions
-
-The workflow file `.github/workflows/fastapibuild.yml` automates:
-1. Running `automationTesting.py`.
-2. Logging into Docker Hub.
-3. Building the Docker image.
-4. Pushing the image to Docker Hub on every push to `main`.
-
-### Setup GitHub Secrets:
-1. In your GitHub repository, go to **Settings → Secrets and variables → Actions → New repository secret**.
-2. Add:
-   - `DOCKERUSERNAME`: Your Docker Hub username.
-   - `DOCKERTOKEN`: Your Docker Hub access token.
-3. Push your code to GitHub:
-   ```bash
-   git add .
-   git commit -m "feat: Notes app with docker build action"
-   git push -u origin main
-   ```
+The workflow in `.github/workflows/fastapibuild.yml` runs on every push to `main`:
+1. Checks out the code.
+2. Sets up Python and installs dependencies.
+3. Runs `automationTesting.py`.
+4. Logs into Docker Hub using secrets (`DOCKERUSERNAME` and `DOCKERTOKEN`).
+5. Builds and pushes the Docker image to Docker Hub.

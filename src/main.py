@@ -3,9 +3,7 @@ import time
 from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 
-# --------------------------------------------------
-# Structured Logging Setup (from the lecture tutorial)
-# --------------------------------------------------
+# Setup logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -15,16 +13,14 @@ logger = logging.getLogger("notes-api")
 PORT = 8000
 app = FastAPI(title="Notes API")
 
-# Simple in-memory list of notes
+# In-memory storage for notes
 notes = [
-    {"id": 1, "title": "First Note", "content": "Welcome to my Notes API"},
-    {"id": 2, "title": "College Task", "content": "Complete Backend Unit 4 PBL"},
+    {"id": 1, "title": "Unit 4 Assignment", "content": "Finish FastAPI and Docker setup"},
+    {"id": 2, "title": "Revision", "content": "Revise backend theory topics"},
 ]
 
 
-# --------------------------------------------------
-# Monitoring Middleware
-# --------------------------------------------------
+# Middleware to log requests and duration
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
     start = time.perf_counter()
@@ -50,15 +46,11 @@ async def log_requests(request: Request, call_next):
         raise
 
 
-# --------------------------------------------------
-# Endpoints (exactly matching tutorial structure)
-# --------------------------------------------------
 @app.get("/")
 async def read_root():
-    return {"Hello": "Notes API", "status": "running"}
+    return {"message": "Notes API is running", "status": "running"}
 
 
-# Health check endpoint (from tutorial video)
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}
@@ -98,6 +90,5 @@ async def delete_note(note_id: int):
     raise HTTPException(status_code=404, detail="Note not found")
 
 
-# Run directly with python main.py (from tutorial video)
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT)
